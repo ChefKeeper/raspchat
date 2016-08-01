@@ -11,6 +11,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -32,6 +33,7 @@ func installSocketMux(mux *http.ServeMux, appConfig rasconfig.ApplicationConfig)
 var routeHandlers = []rasweb.RouteHandler{
 	rasweb.NewGifHandler(),
 	rasweb.NewFileUploadHandler(),
+	rasweb.NewClusterHandler(),
 	rasweb.NewConfigRouteHandler(),
 	rasweb.NewDirectPagesHandler(),
 }
@@ -61,6 +63,15 @@ func parseArgs() (filePath string) {
 func main() {
 	rasconfig.LoadApplicationConfig(parseArgs())
 	conf := rasconfig.CurrentAppConfig
+	if conf.DBPath != "" {
+		os.MkdirAll(conf.DBPath, os.ModePerm)
+	}
+	if conf.LogFilePath != "" {
+		os.MkdirAll(conf.LogFilePath, os.ModePerm)
+	}
+	if conf.ClusterStatePath != "" {
+		os.MkdirAll(conf.ClusterStatePath, os.ModePerm)
+	}
 
 	if conf.LogFilePath != "" {
 		log.SetOutput(&lumberjack.Logger{

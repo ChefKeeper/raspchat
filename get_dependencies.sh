@@ -11,7 +11,9 @@ env GOPATH=`pwd` go get github.com/boltdb/bolt/...
 env GOPATH=`pwd` go get gopkg.in/natefinch/lumberjack.v2
 env GOPATH=`pwd` go get github.com/googollee/go-gcm
 env GOPATH=`pwd` go get github.com/Azure/azure-sdk-for-go/management
-env GOPATH=`pwd` go get go get github.com/urfave/negroni
+env GOPATH=`pwd` go get github.com/urfave/negroni
+env GOPATH=`pwd` go get github.com/hashicorp/raft
+env GOPATH=`pwd` go get github.com/hashicorp/raft-boltdb
 
 pushd src/github.com/speps/go-hashids
 git checkout -q master

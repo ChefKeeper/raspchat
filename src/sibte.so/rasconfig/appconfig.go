@@ -3,6 +3,7 @@ package rasconfig
 import (
 	"io/ioutil"
 	"log"
+	"path"
 
 	"encoding/json"
 )
@@ -19,6 +20,10 @@ type ApplicationConfig struct {
 	WebSocketSecureURL string            `json:"websocketsecure_url"`
 	HasAuthProviders   bool              `json:"has_auth_providers"`
 	UploaderConfig     map[string]string `json:"uploader_config"`
+
+	ClusterBindAddress string   `json:"cluster_bind_address"`
+	ClusterPeers       []string `json:"cluster_peers"`
+	ClusterStatePath   string   `json:"cluster_state_path"`
 }
 
 var CurrentAppConfig ApplicationConfig
@@ -44,6 +49,10 @@ func LoadApplicationConfig(filePath string) {
 		conf.UploaderConfig = make(map[string]string)
 		conf.UploaderConfig["provider"] = "local"
 		conf.UploaderConfig["disk_storage_path"] = dir
+
+		conf.ClusterPeers = make([]string, 0)
+		conf.ClusterBindAddress = ":5000"
+		conf.ClusterStatePath = path.Join(dir, "statemachine")
 		return
 	}
 
