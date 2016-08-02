@@ -11,19 +11,19 @@ import (
 )
 
 type azureStorageConfig struct {
-	AccountName string `json:"account_name,omitempty"`
-	AccountKey  string `json:"account_key,omitempty"`
-	Container   string `json:"container,omitempty"`
-	Domain      string `json:"domain,omitempty"`
+    AccountName string `json:"account_name,omitempty"`
+    AccountKey  string `json:"account_key,omitempty"`
+    Container   string `json:"container,omitempty"`
+    Domain      string `json:"domain,omitempty"`
 }
 
 type azureFS struct {
-	config *azureStorageConfig
+    config *azureStorageConfig
 }
 
 // NewAzureFS creates instance of AzureFS implementation
 func NewAzureFS() RasFS {
-	return &azureFS{}
+    return &azureFS{}
 }
 
 func (a *azureFS) Init(cfg map[string]string) error {

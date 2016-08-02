@@ -26,7 +26,7 @@ func installSocketMux(mux *http.ServeMux, appConfig rasconfig.ApplicationConfig)
 	s := rica.NewChatService(appConfig).WithRESTRoutes("/chat")
 
 	mux.Handle("/chat", s)
-	mux.Handle("/chat/", s)
+    mux.Handle("/chat/", s)
 	return
 }
 
