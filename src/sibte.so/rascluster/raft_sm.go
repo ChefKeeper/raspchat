@@ -83,11 +83,28 @@ func (s *raftStateMachine) Address() string {
 	return s.bind.String()
 }
 
+func (s *raftStateMachine) Leader() string {
+	return s.raft.Leader()
+}
+
+func (s *raftStateMachine) Ping() error {
+	if f := s.raft.VerifyLeader(); f != nil && f.Error() != nil {
+		return f.Error()
+	}
+
+	if f := s.raft.Apply([]byte("PING"), 1*time.Second); f != nil && f.Error() != nil {
+		return f.Error()
+	}
+
+	return nil
+}
+
 // Apply log is invoked once a log entry is committed.
 // It returns a value which will be made available in the
 // ApplyFuture returned by Raft.Apply method if that
 // method was called on the same Raft node as the FSM.
-func (s *raftStateMachine) Apply(log *raft.Log) interface{} {
+func (s *raftStateMachine) Apply(logEntry *raft.Log) interface{} {
+	log.Println("Apply", logEntry.Type, logEntry.Index, logEntry.Term)
 	return nil
 }
 
@@ -98,6 +115,7 @@ func (s *raftStateMachine) Apply(log *raft.Log) interface{} {
 // the FSM should be implemented in a fashion that allows for concurrent
 // updates while a snapshot is happening.
 func (s *raftStateMachine) Snapshot() (raft.FSMSnapshot, error) {
+	log.Println("Snapshot")
 	return nil, nil
 }
 
@@ -105,5 +123,6 @@ func (s *raftStateMachine) Snapshot() (raft.FSMSnapshot, error) {
 // concurrently with any other command. The FSM must discard all previous
 // state.
 func (s *raftStateMachine) Restore(reader io.ReadCloser) error {
+	log.Println("Restore")
 	return nil
 }

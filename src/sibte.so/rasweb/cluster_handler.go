@@ -34,6 +34,7 @@ func (c *clusterHandler) Register(h *httprouter.Router) error {
 	c.stateMachine = sm
 	h.POST("/cluster/add", c.addClusterPeer)
 	h.GET("/cluster/join/:address", c.joinCluster)
+	h.GET("/cluster/ping", c.pingCluster)
 
 	for _, peer := range config.ClusterPeers {
 		log.Println("Requesting to join...", peer, c.requestJoinCluster(peer))
@@ -73,6 +74,22 @@ func (c *clusterHandler) joinCluster(w http.ResponseWriter, r *http.Request, par
 	}
 
 	fmt.Fprintf(w, "OK")
+}
+
+func (c *clusterHandler) pingCluster(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if !c.stateMachine.IsLeader() {
+		w.WriteHeader(409)
+		fmt.Fprintf(w, "Not a leader current leader is %v", c.stateMachine.Leader())
+		return
+	}
+
+	if err := c.stateMachine.Ping(); err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "Error pinging %v", err)
+		return
+	}
+
+	fmt.Fprintf(w, "Success")
 }
 
 func (c *clusterHandler) requestJoinCluster(peer string) error {
