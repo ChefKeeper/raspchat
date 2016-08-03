@@ -10,24 +10,31 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-type ChatLogStore struct {
+type ChatLogStore interface {
+    Save(group string, id uint64, msg IEventMessage) error
+    GetMessagesFor(group string, start_id string, offset uint, limit uint) ([]IEventMessage, error)
+    GetMessage(id uint64) (IEventMessage, error)
+    Cleanup(group string)
+}
+
+type chatLogStore struct {
 	store  *bolt.DB
 	bucket []byte
 }
 
-func NewChatLogStore(path string, bucket []byte) (*ChatLogStore, error) {
+func NewChatLogStore(path string, bucket []byte) (*chatLogStore, error) {
 	db, err := bolt.Open(path, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ChatLogStore{
+	return &chatLogStore{
 		store:  db,
 		bucket: bucket,
 	}, nil
 }
 
-func (c *ChatLogStore) Save(group string, id uint64, msg IEventMessage) error {
+func (c *chatLogStore) Save(group string, id uint64, msg IEventMessage) error {
 	bytesMsg := c.serialize(msg)
 
 	if bytesMsg == nil {
@@ -59,7 +66,7 @@ func (c *ChatLogStore) Save(group string, id uint64, msg IEventMessage) error {
 	return nil
 }
 
-func (c *ChatLogStore) GetMessagesFor(group string, start_id string, offset uint, limit uint) ([]IEventMessage, error) {
+func (c *chatLogStore) GetMessagesFor(group string, start_id string, offset uint, limit uint) ([]IEventMessage, error) {
 	tx, err := c.store.Begin(false)
 	if err != nil {
 		return nil, err
@@ -111,7 +118,7 @@ func (c *ChatLogStore) GetMessagesFor(group string, start_id string, offset uint
 	return ret, nil
 }
 
-func (c *ChatLogStore) GetMessage(id uint64) (IEventMessage, error) {
+func (c *chatLogStore) GetMessage(id uint64) (IEventMessage, error) {
 	tx, err := c.store.Begin(false)
 	if err != nil {
 		return nil, err
@@ -142,10 +149,10 @@ func (c *ChatLogStore) GetMessage(id uint64) (IEventMessage, error) {
 	return m, nil
 }
 
-func (c *ChatLogStore) Cleanup(group string) {
+func (c *chatLogStore) Cleanup(group string) {
 }
 
-func (c *ChatLogStore) serialize(v IEventMessage) []byte {
+func (c *chatLogStore) serialize(v IEventMessage) []byte {
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
 
@@ -156,7 +163,7 @@ func (c *ChatLogStore) serialize(v IEventMessage) []byte {
 	return buffer.Bytes()
 }
 
-func (c *ChatLogStore) deserialize(b []byte) IEventMessage {
+func (c *chatLogStore) deserialize(b []byte) IEventMessage {
 	buffer := bytes.NewBuffer(b)
 	dec := gob.NewDecoder(buffer)
 
@@ -183,7 +190,7 @@ func (c *ChatLogStore) deserialize(b []byte) IEventMessage {
 	return nil
 }
 
-func (c *ChatLogStore) idToBytes(id uint64) []byte {
+func (c *chatLogStore) idToBytes(id uint64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, id)
 	return b

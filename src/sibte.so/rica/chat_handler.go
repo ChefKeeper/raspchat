@@ -31,7 +31,7 @@ type ChatHandler struct {
 	transport        IMessageTransport
 	outgoing         chan interface{}
 	groups           map[string]interface{}
-	chatStore        *ChatLogStore
+	chatStore        ChatLogStore
 }
 
 var pHashID = hashids.New()
@@ -53,7 +53,7 @@ func messageOf(event string) BaseMessage {
 }
 
 // NewChatHandler creates new ChatHandler
-func NewChatHandler(nickReg *NickRegistry, groupInfoMan GroupInfoManager, trans IMessageTransport, store *ChatLogStore) *ChatHandler {
+func NewChatHandler(nickReg *NickRegistry, groupInfoMan GroupInfoManager, trans IMessageTransport, store ChatLogStore) *ChatHandler {
 	uid, _ := pHashID.Encode([]int{
 		int(rand.Int31n(1000)),
 		int(rand.Int31n(1000)),

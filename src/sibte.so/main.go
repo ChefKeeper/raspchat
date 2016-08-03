@@ -19,26 +19,27 @@ import (
 	"sibte.so/rasconfig"
 	"sibte.so/rasweb"
 	"sibte.so/rica"
+    "sibte.so/rascluster"
 )
 
-func installSocketMux(mux *http.ServeMux, appConfig rasconfig.ApplicationConfig) (err error) {
+func installSocketMux(mux *http.ServeMux, appConfig *rasconfig.ApplicationConfig, stateMachine rascluster.ClusterStateMachine) (err error) {
 	err = nil
-	s := rica.NewChatService(appConfig).WithRESTRoutes("/chat")
+	s := rica.NewChatService(appConfig, stateMachine).WithRESTRoutes("/chat")
 
 	mux.Handle("/chat", s)
     mux.Handle("/chat/", s)
 	return
 }
 
-var routeHandlers = []rasweb.RouteHandler{
-	rasweb.NewGifHandler(),
-	rasweb.NewFileUploadHandler(),
-	rasweb.NewClusterHandler(),
-	rasweb.NewConfigRouteHandler(),
-	rasweb.NewDirectPagesHandler(),
-}
+func installHTTPRoutes(mux *http.ServeMux, appConfig *rasconfig.ApplicationConfig, stateMachine rascluster.ClusterStateMachine) (err error) {
+    routeHandlers := []rasweb.RouteHandler{
+        rasweb.NewGifHandler(appConfig),
+        rasweb.NewFileUploadHandler(appConfig),
+        rasweb.NewClusterHandler(appConfig, stateMachine),
+        rasweb.NewConfigRouteHandler(appConfig),
+        rasweb.NewDirectPagesHandler(appConfig),
+    }
 
-func installHTTPRoutes(mux *http.ServeMux) (err error) {
 	err = nil
 	router := httprouter.New()
 
@@ -61,8 +62,9 @@ func parseArgs() (filePath string) {
 }
 
 func main() {
+    rica.RegisterMessageTypes()
 	rasconfig.LoadApplicationConfig(parseArgs())
-	conf := rasconfig.CurrentAppConfig
+	conf := &rasconfig.CurrentAppConfig
 	if conf.DBPath != "" {
 		os.MkdirAll(conf.DBPath, os.ModePerm)
 	}
@@ -82,9 +84,18 @@ func main() {
 		})
 	}
 
+    stateMachine, err := rascluster.NewRaftStateMachine(
+        conf.ClusterStatePath,
+        conf.ClusterBindAddress,
+        conf.ClusterPeers == nil || len(conf.ClusterPeers) < 1)
+
+    if err != nil {
+        log.Panic(err)
+    }
+
 	mux := http.NewServeMux()
-	installSocketMux(mux, conf)
-	installHTTPRoutes(mux)
+	installSocketMux(mux, conf, stateMachine)
+	installHTTPRoutes(mux, conf, stateMachine)
 	server := &http.Server{
 		Addr:    conf.BindAddress,
 		Handler: mux,

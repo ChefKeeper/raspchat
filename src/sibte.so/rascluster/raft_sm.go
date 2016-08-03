@@ -14,6 +14,7 @@ import (
 
 type raftStateMachine struct {
 	directory string
+    callbacks []UpdateStateListener
 	bind      *net.TCPAddr
 	raft      *raft.Raft
 }
@@ -52,6 +53,7 @@ func NewRaftStateMachine(directory, bind string, leader bool) (ClusterStateMachi
 		directory: directory,
 		bind:      addr,
 		raft:      nil,
+        callbacks: make([]UpdateStateListener, 0),
 	}
 
 	sm.raft, err = raft.NewRaft(config, sm, logStore, logStore, snapshotStore, peersStore, transport)
@@ -87,16 +89,37 @@ func (s *raftStateMachine) Leader() string {
 	return s.raft.Leader()
 }
 
+func (s *raftStateMachine) ApplyMessage(msg []byte, duration time.Duration) error {
+    if f := s.raft.VerifyLeader(); f != nil && f.Error() != nil {
+        return f.Error()
+    }
+
+    if f := s.raft.Apply(msg, duration); f != nil && f.Error() != nil {
+        return f.Error()
+    }
+
+    return nil
+}
+
 func (s *raftStateMachine) Ping() error {
-	if f := s.raft.VerifyLeader(); f != nil && f.Error() != nil {
-		return f.Error()
-	}
+    return s.ApplyMessage([]byte("PING"), 1*time.Second)
+}
 
-	if f := s.raft.Apply([]byte("PING"), 1*time.Second); f != nil && f.Error() != nil {
-		return f.Error()
-	}
+func (s *raftStateMachine) OnUpdate(callback UpdateStateListener) {
+    s.callbacks = append(s.callbacks, callback)
+}
 
-	return nil
+func (s *raftStateMachine) OffUpdate(callback UpdateStateListener) {
+    found := -1
+    for i, cb := range s.callbacks {
+        if callback == cb {
+            found = i
+        }
+    }
+
+    if found != -1 {
+        s.callbacks = append(s.callbacks[:found], s.callbacks[found+1:]...)
+    }
 }
 
 // Apply log is invoked once a log entry is committed.
@@ -104,7 +127,18 @@ func (s *raftStateMachine) Ping() error {
 // ApplyFuture returned by Raft.Apply method if that
 // method was called on the same Raft node as the FSM.
 func (s *raftStateMachine) Apply(logEntry *raft.Log) interface{} {
-	log.Println("Apply", logEntry.Type, logEntry.Index, logEntry.Term)
+	log.Println("Applying log type:", logEntry.Type, "index:", logEntry.Index, "term:", logEntry.Term)
+
+    // Only play update state in case of command log
+    if logEntry.Type == raft.LogCommand {
+        log.Println("About to invoke", len(s.callbacks), "subscriptions")
+        for _, cb := range s.callbacks {
+            if err := cb.OnStateUpdated(logEntry.Data); err != nil {
+                log.Println("ERROR =", err)
+            }
+        }
+    }
+
 	return nil
 }
 

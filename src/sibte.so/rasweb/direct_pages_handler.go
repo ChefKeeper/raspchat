@@ -6,15 +6,20 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+    "sibte.so/rasconfig"
 )
 
 type directPagesHandler struct {
 	pageCache map[string][]byte
+    appConfig *rasconfig.ApplicationConfig
 }
 
 // NewDirectPagesHandler initializes direct page route handlers
-func NewDirectPagesHandler() RouteHandler {
-	return &directPagesHandler{make(map[string][]byte)}
+func NewDirectPagesHandler(config *rasconfig.ApplicationConfig) RouteHandler {
+	return &directPagesHandler{
+		pageCache: make(map[string][]byte, 0),
+        appConfig: config,
+	}
 }
 
 func (h *directPagesHandler) Register(r *httprouter.Router) error {

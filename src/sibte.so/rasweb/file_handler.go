@@ -18,23 +18,24 @@ import (
 const MaxFileSizeLimit = 64 << 20
 
 type fileUploadHandler struct {
+    appConfig    *rasconfig.ApplicationConfig
     fsUploader   rasfs.RasFS
     fsDownloader rasfs.DownloadableRasFS
 }
 
 // NewFileUploadHandler handles file upload requests
-func NewFileUploadHandler() RouteHandler {
-    return &fileUploadHandler{}
+func NewFileUploadHandler(config *rasconfig.ApplicationConfig) RouteHandler {
+    return &fileUploadHandler{ appConfig: config }
 }
 
 func (p *fileUploadHandler) Register(r *httprouter.Router) error {
-    configs := []rasfs.RasFS{
+    fileSystems := []rasfs.RasFS{
         rasfs.NewAzureFS(),
         rasfs.NewLocalFS(),
     }
 
-    for _, fs := range configs {
-        err := fs.Init(rasconfig.CurrentAppConfig.UploaderConfig)
+    for _, fs := range fileSystems {
+        err := fs.Init(p.appConfig.UploaderConfig)
         if err == nil {
             p.fsUploader = fs
             break

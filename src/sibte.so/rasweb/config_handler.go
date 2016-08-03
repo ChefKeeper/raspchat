@@ -11,11 +11,12 @@ import (
 )
 
 type configRouteHandler struct {
+    appConfig *rasconfig.ApplicationConfig
 }
 
 // NewConfigRouteHandler returns instance of configuration route handler
-func NewConfigRouteHandler() RouteHandler {
-    return &configRouteHandler{}
+func NewConfigRouteHandler(config *rasconfig.ApplicationConfig) RouteHandler {
+    return &configRouteHandler{appConfig: config}
 }
 
 func (h *configRouteHandler) Register(r *httprouter.Router) error {
@@ -25,7 +26,6 @@ func (h *configRouteHandler) Register(r *httprouter.Router) error {
 
 // GetChatConfigurationHalder handles the /config/client.(js|json) calls
 func (h *configRouteHandler) getChatConfigurationHalder(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-    appConfig := rasconfig.CurrentAppConfig
     isJs := false
 
     if strings.HasSuffix(params.ByName("type"), ".js") {
@@ -39,10 +39,10 @@ func (h *configRouteHandler) getChatConfigurationHalder(w http.ResponseWriter, r
     }
 
     config := make(map[string]interface{})
-    config["webSocketConnectionUri"] = appConfig.WebSocketURL
-    config["webSocketSecureConnectionUri"] = appConfig.WebSocketSecureURL
-    config["externalSignIn"] = appConfig.ExternalSignIn
-    config["hasAuthProviders"] = appConfig.HasAuthProviders
+    config["webSocketConnectionUri"] = h.appConfig.WebSocketURL
+    config["webSocketSecureConnectionUri"] = h.appConfig.WebSocketSecureURL
+    config["externalSignIn"] = h.appConfig.ExternalSignIn
+    config["hasAuthProviders"] = h.appConfig.HasAuthProviders
 
     if isJs {
         fmt.Fprint(w, "window.RaspConfig=")

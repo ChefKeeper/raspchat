@@ -18,12 +18,13 @@ type atomicStore struct {
 }
 
 type gifRouteHandler struct {
-    kvStore *atomicStore
+    kvStore   *atomicStore
+    appConfig *rasconfig.ApplicationConfig
 }
 
 // NewGifHandler creates a route handler for gif finder
-func NewGifHandler() RouteHandler {
-    return &gifRouteHandler{}
+func NewGifHandler(config *rasconfig.ApplicationConfig) RouteHandler {
+    return &gifRouteHandler{appConfig: config}
 }
 
 func (h *gifRouteHandler) Register(r *httprouter.Router) error {
@@ -43,8 +44,8 @@ func (h *gifRouteHandler) findGifHandler(w http.ResponseWriter, r *http.Request,
         return
     }
 
-    qreader := strings.NewReader("text=" + q)
-    resp, err := http.Post("https://rightgif.com/search/web", "application/x-www-form-urlencoded", qreader)
+    qReader := strings.NewReader("text=" + q)
+    resp, err := http.Post("https://rightgif.com/search/web", "application/x-www-form-urlencoded", qReader)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         log.Println("Error", err)
@@ -58,7 +59,7 @@ func (h *gifRouteHandler) findGifHandler(w http.ResponseWriter, r *http.Request,
 }
 
 func (h *gifRouteHandler) initGifCache() error {
-    db, err := bolt.Open(rasconfig.CurrentAppConfig.DBPath + "/gifstore.bolt", 0600, nil)
+    db, err := bolt.Open(h.appConfig.DBPath + "/gifstore.bolt", 0600, nil)
 
     if err != nil {
         return err

@@ -14,19 +14,21 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"sibte.so/rasconfig"
+    "sibte.so/rascluster"
 )
 
 type ChatService struct {
-	sync.Mutex
-	groupInfo    GroupInfoManager
-	chatStore    *ChatLogStore
-	nickRegistry *NickRegistry
-	upgrader     *websocket.Upgrader
-	gcmWorker    *GCMWorker
-	httpMux      *http.ServeMux
+    sync.Mutex
+    groupInfo           GroupInfoManager
+    clusterStateMachine rascluster.ClusterStateMachine
+    chatStore           ChatLogStore
+    nickRegistry        *NickRegistry
+    wsUpgrader          *websocket.Upgrader
+    gcmWorker           *GCMWorker
+    httpMux             *http.ServeMux
 }
 
-func NewChatService(appConfig rasconfig.ApplicationConfig) *ChatService {
+func NewChatService(appConfig *rasconfig.ApplicationConfig, stateMachine rascluster.ClusterStateMachine) *ChatService {
 	initChatHandlerTypes()
 	store, e := NewChatLogStore(rasconfig.CurrentAppConfig.DBPath+"/chats.bolt.db", []byte("chats"))
 	allowedOrigins := appConfig.AllowedOrigins
@@ -59,11 +61,12 @@ func NewChatService(appConfig rasconfig.ApplicationConfig) *ChatService {
 	}
 
 	return &ChatService{
-		groupInfo:    NewInMemoryGroupInfo(),
-		nickRegistry: NewNickRegistry(),
-		gcmWorker:    NewGCMWorker(rasconfig.CurrentAppConfig.GCMToken),
-		chatStore:    store,
-		upgrader:     wsUpgrader,
+		groupInfo:              NewInMemoryGroupInfo(),
+		nickRegistry:           NewNickRegistry(),
+        clusterStateMachine:    stateMachine,
+		gcmWorker:              NewGCMWorker(rasconfig.CurrentAppConfig.GCMToken),
+		chatStore:              NewReplicatedChatLogStore(store, stateMachine),
+		wsUpgrader:             wsUpgrader,
 	}
 }
 
@@ -94,7 +97,7 @@ func (c *ChatService) httpRoutes(prefix string, router *httprouter.Router) http.
 }
 
 func (c *ChatService) upgradeConnectionToWebSocket(w http.ResponseWriter, req *http.Request) bool {
-	conn, err := c.upgrader.Upgrade(w, req, nil)
+	conn, err := c.wsUpgrader.Upgrade(w, req, nil)
 	if err == nil {
 		transporter := NewWebsocketMessageTransport(conn)
 		handler := NewChatHandler(c.nickRegistry, c.groupInfo, transporter, c.chatStore)
@@ -109,14 +112,14 @@ func (c *ChatService) upgradeConnectionToWebSocket(w http.ResponseWriter, req *h
 func (c *ChatService) onPushSubscribe(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	token := req.FormValue("gcm_sub_token")
 	if token == "" {
-		fmt.Fprintf(w, "false")
+		fmt.Fprint(w, "false")
 		return
 	}
 
 	transporter := NewGCMTransport(token, c.gcmWorker)
 	handler := NewChatHandler(c.nickRegistry, c.groupInfo, transporter, c.chatStore)
 	go handler.Loop()
-	fmt.Fprintf(w, "true")
+	fmt.Fprint(w, "true")
 }
 
 func (c *ChatService) onPushPost(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
@@ -124,11 +127,11 @@ func (c *ChatService) onPushPost(w http.ResponseWriter, req *http.Request, _ htt
 	t := NewGCMTransport(token, c.gcmWorker)
 	if msg, err := ioutil.ReadAll(req.Body); req.Method == "POST" && err == nil {
 		t.PostMessage(string(msg))
-		fmt.Fprintf(w, "true")
+		fmt.Fprint(w, "true")
 		return
 	}
 
-	fmt.Fprintf(w, "false")
+	fmt.Fprint(w, "false")
 }
 
 func (c *ChatService) onGetChatHistory(w http.ResponseWriter, req *http.Request, p httprouter.Params) {

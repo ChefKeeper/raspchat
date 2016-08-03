@@ -14,29 +14,22 @@ import (
 
 type clusterHandler struct {
     stateMachine rascluster.ClusterStateMachine
+    appConfig    *rasconfig.ApplicationConfig
 }
 
-func NewClusterHandler() RouteHandler {
-    return &clusterHandler{}
+func NewClusterHandler(config *rasconfig.ApplicationConfig, stateMachine rascluster.ClusterStateMachine) RouteHandler {
+    return &clusterHandler{
+        appConfig: config,
+        stateMachine: stateMachine,
+    }
 }
 
 func (c *clusterHandler) Register(h *httprouter.Router) error {
-    config := rasconfig.CurrentAppConfig
-    sm, err := rascluster.NewRaftStateMachine(
-        config.ClusterStatePath,
-        config.ClusterBindAddress,
-        config.ClusterPeers == nil || len(config.ClusterPeers) < 1)
-
-    if err != nil {
-        return err
-    }
-
-    c.stateMachine = sm
     h.POST("/cluster/add", c.addClusterPeer)
     h.GET("/cluster/join/:address", c.joinCluster)
     h.GET("/cluster/ping", c.pingCluster)
 
-    for _, peer := range config.ClusterPeers {
+    for _, peer := range c.appConfig.ClusterPeers {
         log.Println("Requesting to join...", peer, c.requestJoinCluster(peer))
     }
 
@@ -46,7 +39,7 @@ func (c *clusterHandler) Register(h *httprouter.Router) error {
 func (c *clusterHandler) addClusterPeer(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
     if !c.stateMachine.IsLeader() {
         w.WriteHeader(403)
-        fmt.Fprintf(w, "Invalid state to perform operation, node is not a leader")
+        fmt.Fprint(w, "Invalid state to perform operation, node is not a leader")
         return
     }
 
@@ -73,7 +66,7 @@ func (c *clusterHandler) joinCluster(w http.ResponseWriter, r *http.Request, par
         return
     }
 
-    fmt.Fprintf(w, "OK")
+    fmt.Fprint(w, "OK")
 }
 
 func (c *clusterHandler) pingCluster(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -89,7 +82,7 @@ func (c *clusterHandler) pingCluster(w http.ResponseWriter, r *http.Request, _ h
         return
     }
 
-    fmt.Fprintf(w, "Success")
+    fmt.Fprint(w, "Success")
 }
 
 func (c *clusterHandler) requestJoinCluster(peer string) error {

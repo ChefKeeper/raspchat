@@ -1,6 +1,9 @@
 package rica
 
-import "time"
+import (
+	"time"
+	"encoding/gob"
+)
 
 type IEventMessage interface {
 	Identity() uint64
@@ -69,4 +72,41 @@ type ErrorMessage struct {
 	Type  string      `json:"error_type"`
 	Error string      `json:"error"`
 	Body  interface{} `json:"body"`
+}
+
+func RegisterMessageTypes()  {
+    gob.Register(BaseMessage{})
+	gob.Register(PingMessage{})
+    gob.Register(HandshakeMessage{})
+    gob.Register(RecipientMessage{})
+    gob.Register(ChatMessage{})
+    gob.Register(RecipientContentMessage{})
+    gob.Register(NickMessage{})
+    gob.Register(StringMessage{})
+    gob.Register(ErrorMessage{})
+}
+
+func ConvertToIEventMessage(u interface{}) IEventMessage {
+    switch x := u.(type) {
+        case BaseMessage:
+            return &x
+        case PingMessage:
+            return &x
+        case HandshakeMessage:
+            return &x
+        case RecipientMessage:
+            return &x
+        case ChatMessage:
+            return &x
+        case RecipientContentMessage:
+            return &x
+        case NickMessage:
+            return &x
+        case StringMessage:
+            return &x
+        case ErrorMessage:
+            return &x
+    }
+
+    return nil
 }
