@@ -23,7 +23,10 @@ _testmain.go
 *.test
 *.prof
 
+# Config or misc files
+rica.config.*.json
 gpm
+
 bin/
 node_modules/
 dist/
@@ -34,4 +37,6 @@ src/gopkg.in/
 src/golang.org/
 src/sourcegraph.com/
 src/honnef.co/
-rica.config.*.json
+.idea/
+pkg/
+snapshots/
