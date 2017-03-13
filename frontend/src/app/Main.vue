@@ -1,7 +1,8 @@
 <template lang="pug">
-split-pane.root
-  p(slot="left") Hello
-  p(slot="right") World
+#main
+  split-pane
+    p(slot="left") Left Panel
+    p(slot="right") Right Panel
 </template>
 
 <script>
