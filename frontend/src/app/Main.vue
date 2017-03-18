@@ -1,12 +1,12 @@
 <template lang="pug">
 #main
-  split-pane
+  split-pane(ratio="0.2")
     p(slot="left") Left Panel
     p(slot="right") Right Panel
 </template>
 
 <script>
-import SplitPane from './containers/SplitPane.vue'
+import SplitPane from './components/SplitPane.vue'
 
 export default {
   name: 'Main',
