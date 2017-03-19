@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import ChatPane from '@/components/ChatPane'
+import ChatView from '@/components/ChatView'
 
 Vue.use(Router)
 
@@ -9,7 +9,7 @@ export default new Router({
     {
       path: '/',
       name: 'Home',
-      component: ChatPane
+      component: ChatView
     }
   ]
 })
